@@ -1,85 +1,53 @@
-// // import React from "react";
-// // import ReactDOM from "react-dom";
-// // import "./index.css";
-// // import App from "./App";
-// // import { Provider } from "react-redux";
-// // import store from "./store";
+const mongoose = require('mongoose');
+const app = require('./app');
+const config = require('./config/config');
+const logger = require('./config/logger');
+const ngrok = require("ngrok");
 
-// // ReactDOM.render(
-// // 	<Provider store={store}>
-// // 		<App />
-// // 	</Provider>,
-// // 	document.getElementById("root")
-// // );
+let server;
+mongoose.connect(config.mongoose.url, config.mongoose.options).then(() => {
+  logger.info('Connected to MongoDB');
+  server = app.listen(config.port, () => {
+    logger.info(`Listening to port ${config.port}`);
+  });
+});
 
+const exitHandler = () => {
+  if (server) {
+    server.close(() => {
+      logger.info('Server closed');
+      process.exit(1);
+    });
+  } else {
+    process.exit(1);
+  }
+};
 
-// import React from 'react';
-// import ReactDOM from 'react-dom';
-// import App from './App';
-// import { Provider } from 'react-redux';
-// import thunk from 'redux-thunk';
-// import { createStore, applyMiddleware, compose } from 'redux';
-// import rootReducer from './reducers/auth';
-// import jwtDecode from 'jwt-decode';
-// import { setCurrentUser,setAuthorizationToken } from './actions/auth';
+const unexpectedErrorHandler = (error) => {
+  logger.error(error);
+  exitHandler();
+};
 
-// const store = createStore(
-//   rootReducer,
-//   compose(
-//     applyMiddleware(thunk),
-//     window.devToolsExtension ? window.devToolsExtension() : f => f
-//   )
-// );
+process.on('uncaughtException', unexpectedErrorHandler);
+process.on('unhandledRejection', unexpectedErrorHandler);
 
-// if (localStorage.jwtToken) {
-//   setAuthorizationToken(localStorage.jwtToken);
-//   // prevent someone from manually setting a key of 'jwtToken' in localStorage
-//   try {
-//     store.dispatch(setCurrentUser(jwtDecode(localStorage.jwtToken)));
-//   } catch(e) {
-//     store.dispatch(setCurrentUser({}))
-//   }
-// }
+process.on('SIGTERM', () => {
+  logger.info('SIGTERM received');
+  if (server) {
+    server.close();
+  }
+});
 
-// ReactDOM.render(
-//     <Provider store={store}>
-//         <App />
-//     </Provider>
-//   ,
-//   document.getElementById('root')
-// );
+connectNgrok().then(url => {
 
+  console.log('URL : ' + url);
+});
 
-import React, { Suspense } from 'react';
-import ReactDOM from 'react-dom';
-import { Provider } from 'react-redux';
+ async function connectNgrok() {
 
+    const url = await ngrok.connect();
 
-import App from './containers/App/index';
-import * as serviceWorker from './serviceWorker';
-import '../node_modules/bootstrap/dist/css/bootstrap.min.css';
-import './index.css';
+    return url;
+ }
 
-// import { store } from './helpers';
-import configureStore from "./store";
-import { BrowserRouter } from 'react-router-dom';
-
-// ReactDOM.render(<App />, document.getElementById('root'));
-const store = configureStore();
-
-ReactDOM.render(
-	<Provider store={store}>
-		<BrowserRouter>
-		<Suspense fallback={"Loading..."}>
-		<App />
-		</Suspense>
-		</BrowserRouter>
-		
-	</Provider>,
-	document.getElementById('root')
-);
-
-// If you want your app to work offline and load faster, you can change
-// unregister() to register() below. Note this comes with some pitfalls.
-// Learn more about service workers: https://bit.ly/CRA-PWA
-serviceWorker.unregister();
+ 
